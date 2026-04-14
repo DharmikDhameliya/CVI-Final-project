@@ -36,7 +36,7 @@ def load_driving_data(data_dir):
     columns = ['center', 'left', 'right', 'steering', 'throttle', 'brake', 'speed']
     csv_path = os.path.join(data_dir, 'driving_log.csv')
 
-    df = pd.read_csv(csv_path, names=columns, header=None)
+    df = pd.read_csv(csv_path, names=columns, header=0)
 
     # Strip whitespace from path strings
     df['center'] = df['center'].str.strip()
@@ -100,7 +100,7 @@ def plot_steering_histogram(steering_values, title="Steering Angle Distribution"
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         print(f"[INFO] Histogram saved to {save_path}")
-    plt.show()
+    plt.close()  # Close the figure instead of showing it
 
 
 def balance_data(df, bins=25, samples_per_bin=400):
@@ -117,18 +117,29 @@ def balance_data(df, bins=25, samples_per_bin=400):
     Returns:
         pd.DataFrame: Balanced DataFrame.
     """
+    print(f"[INFO] Balancing data with {bins} bins, max {samples_per_bin} samples per bin...")
+    
     hist, bin_edges = np.histogram(df['steering'], bins=bins)
     remove_indices = []
 
     for i in range(bins):
-        bin_data = df[(df['steering'] >= bin_edges[i]) & (df['steering'] < bin_edges[i + 1])]
-        if len(bin_data) > samples_per_bin:
-            remove_indices.extend(
-                bin_data.sample(n=len(bin_data) - samples_per_bin, random_state=42).index.tolist()
-            )
+        # Find indices in this bin
+        bin_mask = (df['steering'] >= bin_edges[i]) & (df['steering'] < bin_edges[i + 1])
+        bin_indices = df[bin_mask].index.tolist()
+        
+        if len(bin_indices) > samples_per_bin:
+            # Randomly select indices to remove
+            np.random.seed(42)
+            remove_count = len(bin_indices) - samples_per_bin
+            remove_indices.extend(np.random.choice(bin_indices, remove_count, replace=False).tolist())
+        
+        # Progress indicator
+        if (i + 1) % 5 == 0:
+            print(f"[INFO] Processed {i + 1}/{bins} bins...")
 
+    print(f"[INFO] Removing {len(remove_indices)} samples...")
     df_balanced = df.drop(remove_indices).reset_index(drop=True)
-    print(f"[INFO] Balanced data: {len(df)} -> {len(df_balanced)} samples")
+    print(f"[INFO] Balanced data: {len(df)} -> {len(df_balanced)} samples\n")
     return df_balanced
 
 
@@ -322,3 +333,4 @@ def batch_generator(image_paths, steering_angles, batch_size, is_training=True):
             batch_steerings.append(steering)
 
         yield np.array(batch_images), np.array(batch_steerings)
+        

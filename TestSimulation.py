@@ -139,7 +139,7 @@ def main():
     print("SELF-DRIVING CAR - AUTONOMOUS MODE")
     print("=" * 60)
     print(f"[INFO] Loading model from: {args.model}")
-    model = load_model(args.model)
+    model = load_model(args.model, compile=False)  # compile=False fixes Keras version mismatch
     print("[INFO] Model loaded successfully!")
     print(f"[INFO] Max speed: {max_speed}")
     print("\n[INFO] Waiting for simulator connection...")
@@ -155,3 +155,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    
